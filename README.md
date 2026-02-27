@@ -1,71 +1,108 @@
 # Anomaly Detection in Energy Distribution Networks
 
-Dieses Repository enthält die Implementierung eines robusten Systems zur Anomalieerkennung in Energieverteilungsnetzwerken. Im Rahmen der akademischen Ausarbeitung wurden Ansätze aus dem Bereich Deep Learning (Autoencoder) und klassischem Machine Learning (Isolation Forest) evaluiert und implementiert.
+## Kurzfassung
 
-## 🚀 Kernmerkmale
+Im Rahmen dieser Arbeit wird die Erkennung von Anomalien in Zeitreihen elektrischer Energieverteilungsnetze untersucht. Grundlage sind stündliche Balancing-Authority-Daten (Demand, Forecast, Net Generation, Interchange). Ziel ist der methodische Vergleich eines robusten statistischen Verfahrens (`Modified Z-Score`), eines klassischen Machine-Learning-Verfahrens (`Isolation Forest`) und eines rekonstruktionsbasierten Deep-Learning-Ansatzes (`Autoencoder`).
 
-- **Autoencoder-Architektur:** Implementierung mittels `Keras`/`TensorFlow` unter Verwendung von `Conv1D` und `Conv1DTranspose` Layern.
-- **Methodik:** Einsatz von **GELU-Aktivierungsfunktionen** und **PowerTransformer (Yeo-Johnson)** zur Normalisierung rechtsschiefer Energiedaten.
-- **Mathematische Konsistenz:** Anomalie-Detektion basiert auf einer mathematisch konsistenten Schwellenwertanalyse (Mean Squared Error - MSE).
-- **Methodenvergleich:** Integration eines `IsolationForest` als Baseline-Verfahren zur Validierung der Ergebnisse.
-- **Datenverarbeitung:** Hochperformante Datenmanipulation mittels `Polars`.
+## Problemstellung und Zielsetzung
 
-## 🛠 Tech Stack
+Energieverteilungsnetze weisen durch Lastschwankungen, Prognosefehler, Messartefakte und operative Ereignisse komplexe, nichtstationäre Muster auf. Klassische Schwellwertregeln sind in diesem Kontext oft unzureichend.
 
-- **Sprache:** Python 3.10+
-- **Data Handling:** `Polars`
-- **Deep Learning:** `Keras`, `TensorFlow`
-- **ML-Library:** `Scikit-Learn`
-- **Visualisierung:** `Plotly`
+Die Arbeit verfolgt folgende Zielsetzung:
 
-## 📥 Installation
+- Entwicklung einer reproduzierbaren Pipeline zur Datenaufbereitung und Anomalieerkennung
+- Vergleich mehrerer Verfahren hinsichtlich Robustheit und praktischer Eignung
+- Analyse der Erkennbarkeit atypischer Last- und Erzeugungsverläufe
 
-1. Repository klonen:
+## Forschungsfragen
 
-   ```bash
-   git clone [https://github.com/DEIN_USERNAME/DEIN_REPO_NAME.git](https://github.com/DEIN_USERNAME/DEIN_REPO_NAME.git)
-   cd DEIN_REPO_NAME
-   ```
+1. In welchem Umfang unterscheiden sich die Ergebnisse statistischer, baumbasierter und neuronaler Verfahren auf denselben Zeitreihen?
+2. Welche Vorverarbeitungsschritte sind für stabile und nachvollziehbare Ergebnisse erforderlich?
+3. Welche methodischen Grenzen ergeben sich ohne vollständig gelabelte Anomaliedaten?
 
-2. Virtuelle Umgebung erstellen und Abhängigkeiten installieren:
-   python -m venv venv
+## Datengrundlage
 
-   # Windows:
+Verwendet werden Parquet-Dateien im Verzeichnis `data/`:
 
-   venv\Scripts\activate
+- `balance.parquet`
+- `interchange.parquet`
+- `subregion.parquet`
 
-   # Linux/macOS:
+Die standardmäßigen Dateipfade sind in `src/config.py` definiert. Das Laden, Umbenennen und Typisieren der Rohdaten erfolgt in `src/data_loader.py`.
 
-   source venv/bin/activate
+## Methodik
 
-   # Abhängigkeiten installieren
+### 1. Datenaufbereitung
 
-   pip install -r requirements.txt
+- Harmonisierung von Spaltennamen und Datumsformaten
+- Filterung unvollständiger bzw. nicht geeigneter Zeiträume
+- Feature-Bildung (u. a. `forecast_error`, `percentage_forecast_error`)
+- Konsistenzprüfungen und Duplikatkontrolle
 
-## 📊 Verwendung
+### 2. Anomalieerkennung
 
-Das System ist modular aufgebaut. Die Anomalieerkennung kann direkt auf einen Polars-DataFrame angewendet werden:
+- `Modified Z-Score`: robuste baselinebasierte Einzelsignal-Detektion
+- `Isolation Forest`: multivariate, nichtlineare Outlier-Erkennung
+- `Autoencoder` (Conv1D): Rekonstruktionsfehler-basiertes Verfahren auf Sequenzen
 
-```python
-import polars as pl
-from src.anomaly_detection import calculate_outliers_with_autoencoder
+### 3. Auswertung
 
-# Beispiel für die Anwendung
-df = pl.read_csv("data/energy_grid_data.csv")
+- Kennzeichnung verdächtiger Zeitpunkte über `is_outlier`
+- Visuelle Plausibilisierung mit Plotly-Zeitreihen und Verteilungen
+- Vergleich der Verfahren hinsichtlich Sensitivität und Stabilität
 
-# Anomalieerkennung mit dem Autoencoder
-df_results = calculate_outliers_with_autoencoder(
-    df=df,
-    value_cols=["demand_mw_sum", "net_generation_mw_sum"],
-    window_size=16,
-    threshold='auto'
-)
+## Repository-Struktur
 
-# Ergebnis filtern
-anomalies = df_results.filter(pl.col("is_outlier") == True)
-print(f"Anzahl erkannter Anomalien: {len(anomalies)}")
+```text
+.
+├── data/
+├── src/
+│   ├── config.py
+│   ├── data_loader.py
+│   ├── calculate_outliers/
+│   │   ├── calculate_outliers_with_modified_zscore.py
+│   │   ├── calculate_outliers_with_isolation_forest.py
+│   │   └── calculate_outliers_with_autoencoder.py
+│   └── plotting/
+├── datenanalyse_balance.ipynb
+├── datenanalyse_interchange.ipynb
+├── datenanalyse_subregion.ipynb
+├── isolation_forest.ipynb
+├── autoencoder.ipynb
+└── requirements.txt
 ```
 
-## 📝 Lizenz
+## Reproduzierbarkeit
 
-Dieses Projekt ist unter der MIT-Lizenz lizenziert. Weitere Informationen finden Sie in der [LICENSE](LICENSE) Datei.
+### Voraussetzungen
+
+- Python `>= 3.10`
+- Abhängigkeiten gemäß `requirements.txt`
+
+### Installation
+
+```bash
+git clone <REPO-URL>
+cd "Anomaly Detection in Energy Distribution Networks"
+python -m venv .venv
+source .venv/bin/activate          # Windows: .venv\Scripts\activate
+pip install -r requirements.txt
+```
+
+### Empfohlene Ausführungsreihenfolge
+
+1. `datenanalyse_balance.ipynb`
+2. `datenanalyse_interchange.ipynb`
+3. `datenanalyse_subregion.ipynb`
+4. `isolation_forest.ipynb`
+5. `autoencoder.ipynb`
+
+## Methodische Einschränkungen
+
+- Fehlende Ground-Truth-Labels erschweren eine eindeutige quantitative Bewertung.
+- Schwellenwerte (z. B. beim Rekonstruktionsfehler) beeinflussen die Detektionsrate stark.
+- Zeitfensterwahl und Feature-Selektion wirken sich direkt auf die Ergebnisstabilität aus.
+
+## Lizenz
+
+Dieses Projekt ist unter der MIT-Lizenz veröffentlicht. Details siehe [LICENCE](LICENCE).

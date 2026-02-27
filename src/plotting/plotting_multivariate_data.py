@@ -13,58 +13,35 @@ def plot_multivariate_data(
     title: Optional[str] = None,
     columns: int = 1,
 ) -> go.Figure:
-    """
-    Universelle Funktion zur Visualisierung multivariater Daten mit optionaler Anomalie-Hervorhebung
-    und optionaler Gruppierung.
+    """Plottet multivariate Scatter-Daten mit optionaler Gruppierung und Ausreißern.
 
-    Erstellt 2D- oder 3D-Scatterplots für die angegebenen numerischen Spalten. 
-    Optional können Punkte als Anomalien markiert und farblich hervorgehoben werden.
-    Bei Angabe einer Gruppenspalte wird für jede Gruppe ein eigener Subplot erstellt.
-    Achsen werden standardmäßig logarithmisch skaliert, um große Wertebereiche handhabbar darzustellen.
+    Aktuell werden 2D-Scatterplots unterstützt (genau zwei Feature-Spalten).
 
     Args:
-        df (pl.DataFrame): Der Eingabe-Datensatz als Polars DataFrame.
-        value_cols (list[str]): Liste von 2 oder 3 numerischen Spalten, die geplottet werden sollen.
-        group_col (str, optional): Spalte für die Gruppierung der Subplots. 
-            Defaults to None (alle Punkte in einem Plot).
-        sample_fraction (float, optional): Anteil der Stichprobe für große Datenmengen (0 < sample_fraction < 1).
-            Defaults to None (ganzer Datensatz).
-        outlier_col (str, optional): Name einer booleschen Spalte, die Anomalien markiert.
-            True = Anomalie, False = normal. Defaults to None.
-        title: Optional[str] = None,
-        columns (int, optional): Anzahl der Spalten auf die sich die Sub-Plots verteilen.
-            Defaults to 1.
+        df: Eingabe-DataFrame.
+        value_cols: Zu plottende Feature-Spalten (derzeit Länge 2 erforderlich).
+        group_col: Optionale Gruppierungsspalte für mehrere Subplots.
+        sample_fraction: Optionales Zeilen-Sampling-Verhältnis für schnellere Plots.
+        outlier_col: Optionale boolesche Ausreißer-Flag-Spalte.
+        title: Optionaler benutzerdefinierter Titel.
+        columns: Anzahl der Subplot-Spalten.
 
     Returns:
-        go.Figure: Ein Plotly Figure-Objekt mit den generierten Scatterplots.
-            - 2D-Scatter bei 2 Spalten, 3D-Scatter bei 3 Spalten.
-            - Punkte werden nach Normalität oder Anomalie farblich unterschieden.
-            - Optional Subplots pro Gruppe.
-            - Achsen logarithmisch, Titel enthält Hinweis auf Anomalieerkennung und log-Skalierung.
+        Plotly-Figure mit einem Scatter-Subplot pro Gruppe.
 
-    Hinweise:
-        - Bei Gruppierung entsteht pro Gruppe ein Subplot.
-        - Sampling dient nur der Performance und verändert nicht die Anomaliekennzeichnung.
-        - Logarithmische Achsen komprimieren kleine Werte; Null- oder Negativwerte müssen ggf. vorher behandelt werden.
-
-    Beispiel:
-    .. code-block:: python
-        fig = plot_multivariate_data(
-            df=df,
-            value_cols=["forecast_error", "percentage_forecast_error"],
-            group_col="region",
-            sample_fraction=0.1,
-            outlier_col="is_anomaly"
-        )
-        fig.show()
+    Raises:
+        ValueError: Falls ``value_cols`` nicht genau zwei Spalten enthält.
     """
-
+    # Aktuelle Implementierung ist auf 2D-Scatter ausgelegt.
     if len(value_cols) != 2:
         raise ValueError("Nur 2 werden momentan unterstützt.")
 
+    # Einheitliche Farbdefinition für normale und anomale Punkte.
     colors = {"normal": "blue", "not_outlier": "lightgray", "outlier": "red"}
+    # Für log-Skalen und Modellvergleich nur vollständige Feature-Zeilen nutzen.
     plot_df = df.drop_nulls(subset=value_cols)
 
+    # Optionales Downsampling zur Performance-Verbesserung bei großen Datenmengen.
     if sample_fraction is not None and 0 < sample_fraction < 1:
         plot_df = plot_df.sample(fraction=sample_fraction, seed=42)
 
@@ -75,6 +52,7 @@ def plot_multivariate_data(
     else:
         current_group_col = group_col
 
+    # Jede Gruppe wird in einem separaten Subplot dargestellt.
     groups = plot_df[current_group_col].unique().to_list()
     n_groups = len(groups)
 
@@ -87,6 +65,7 @@ def plot_multivariate_data(
         dynamic_height = max(300, 150 * n_rows)
     dynamic_spacing = max(0.01, min(0.1, 1 / (n_rows * 2))) if n_rows > 1 else 0.1
 
+    # Subplot-Titel um Gruppengröße und Ausreißeranzahl ergänzen.
     subplot_titles = []
     for group_val in groups:
         df_sub = plot_df.filter(pl.col(current_group_col) == group_val)
@@ -106,6 +85,7 @@ def plot_multivariate_data(
     )
 
     def add_trace(data, label, color, size, opacity, row, col, showlegend=True):
+        """Fügt an der angegebenen Subplot-Position eine 2D-Scatter-Trace hinzu."""
         if data.height == 0:
             return
         
@@ -122,8 +102,10 @@ def plot_multivariate_data(
             ]) + "<extra></extra>"
         ), row=row, col=col)
 
+    # Titelzusatz wird dynamisch je nach Outlier-/Gruppenansicht aufgebaut.
     title_suffix = ""
 
+    # Dummy-Traces dienen als globale Legende für alle Subplots.
     if outlier_col:
         fig.add_trace(go.Scattergl(
             x=[None], y=[None], mode="markers", name="Normal",
@@ -139,6 +121,7 @@ def plot_multivariate_data(
         col = i % columns + 1
         df_sub = plot_df.filter(pl.col(current_group_col) == group_val)
 
+        # Bei vorhandenem Outlier-Flag getrennte Darstellung von normal/anomal.
         if outlier_col and outlier_col in df_sub.columns:
             df_not_outlier = df_sub.filter(~pl.col(outlier_col))
             df_outlier = df_sub.filter(pl.col(outlier_col))
@@ -153,7 +136,7 @@ def plot_multivariate_data(
                 
             add_trace(df_sub, "Normal", colors["normal"], 5, 0.5, row=row, col=col, showlegend=True)
 
-    # Layout
+    # Gemeinsames Layout für alle Subplots.
     title_text = f"Multivariater Scatter: {' vs. '.join(value_cols)}{title_suffix} (log-Skala)"
     fig.update_layout(
         height=dynamic_height,
@@ -162,6 +145,7 @@ def plot_multivariate_data(
         legend_title="Status" if outlier_col else None
     )
 
+    # 3D-Achsentitel für spätere Erweiterung vorbereitet.
     if len(value_cols) == 3:
         fig.update_layout(scene=dict(
             xaxis_title=value_cols[0],
@@ -169,6 +153,7 @@ def plot_multivariate_data(
             zaxis_title=value_cols[2],
         ))
 
+    # Log-Skalierung verbessert Lesbarkeit bei stark unterschiedlichen Größenordnungen.
     fig.update_xaxes(type="log")
     fig.update_yaxes(type="log")
 

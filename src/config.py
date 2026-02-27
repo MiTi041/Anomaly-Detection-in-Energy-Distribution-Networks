@@ -2,12 +2,12 @@ from pathlib import Path
 import plotly.graph_objects as go
 import plotly.io as pio
 
-# Pfade
+# Zentrale Datenpfade für alle Loader-Funktionen.
 BALANCE_DATA_PATH = Path("./data/balance.parquet")
 INTERCHANGE_DATA_PATH = Path("./data/interchange.parquet")
 SUBREGION_DATA_PATH = Path("./data/subregion.parquet")
 
-# --- PLOTLY SCIENTIFIC TEMPLATE ---
+# Einheitliches Plotly-Template für reproduzierbare Visualisierungen.
 pio.templates["scientific"] = go.layout.Template(
     layout=go.Layout(
         width=900, 

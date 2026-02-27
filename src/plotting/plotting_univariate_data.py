@@ -15,55 +15,26 @@ def plot_univariate_data(
     title: Optional[str] = None,
     columns: int = 1,
 ) -> go.Figure:
-    """
-    Universelle Funktion zur Darstellung univariater Verteilungen und Anomalien.
+    """Visualisiert univariate Verteilungen mit optionaler Gruppierung und Ausreißern.
 
-    Erstellt eine vertikale Abfolge von Subplots (einer pro Gruppe, optional) 
-    und visualisiert die Verteilung der Werte in `value_col`. 
-    Die Verteilung wird als Violinplot dargestellt und die einzelnen Datenpunkte 
-    als Scatterpunkte darüber gelegt. Punkte können optional nach einem Score 
-    als Anomalien farblich hervorgehoben werden.
+    Jede Gruppe wird in einem eigenen Subplot mit Scatter-Punkten und optionaler
+    Violin-Dichtedarstellung gezeigt.
 
     Args:
-        df (pl.DataFrame): Der Eingabe-Datensatz als Polars DataFrame.
-        value_col (str): Name der Spalte mit den numerischen Werten für die X-Achse.
-        group_col (str, optional): Spalte für die Gruppierung der Subplots. 
-            Defaults to None (alle Werte in einem Plot).
-        outlier_col (str, optional): Name einer booleschen Spalte, die Anomalien markiert.
-            True = Anomalie, False = normal. Defaults to None.
-        show_density (bool, optional): Flag, ob die graue Dichtekurve (Violin) im Hintergrund 
-            angezeigt wird. Defaults to True.
-        title (str, optional): Eigener Plot-Titel.
-        columns (int, optional): Anzahl der Spalten auf die sich die Sub-Plots verteilen.
-            Defaults to 1.
-        sample_fraction (float, optional): Anteil der Stichprobe für große Datenmengen (0 < sample_fraction < 1).
-            Defaults to None (ganzer Datensatz).
+        df: Eingabe-DataFrame.
+        value_col: Numerische Spalte, die visualisiert werden soll.
+        group_col: Optionale Gruppierungsspalte für separate Subplots.
+        outlier_col: Optionale boolesche Ausreißer-Flag-Spalte.
+        show_density: Gibt an, ob Violin-Dichtedarstellungen gezeichnet werden.
+        sample_fraction: Optionales Sampling-Verhältnis für Nicht-Ausreißer bei
+            großen Datensätzen.
+        title: Optionaler benutzerdefinierter Figure-Titel.
+        columns: Anzahl der Subplot-Spalten.
 
     Returns:
-        go.Figure: Ein Plotly Figure-Objekt mit den generierten Subplots.
-            - Jeder Subplot zeigt die Verteilung und Punkte einer Gruppe (oder Gesamtverteilung).
-            - Ausreißer werden farblich hervorgehoben, wenn `score_col` angegeben ist.
-            - Achsen sind für die Scatterpunkte linear, Violin-Dichte wird in Grautönen angezeigt.
-
-    Hinweise:
-        - Wenn `score_col` angegeben ist, werden Punkte oberhalb des `threshold` als Anomalien markiert.
-        - Die Violin-Darstellung dient zur Visualisierung der Dichteverteilung.
-        - Für extrem große Wertebereiche kann eine Vorverarbeitung (z.B. Log-Skalierung) sinnvoll sein.
-        - Subplot-Höhen und Abstände passen sich automatisch an die Anzahl der Gruppen an.
-
-    Beispiel:
-    .. code-block:: python
-        fig = plot_univariate_data(
-            df=df,
-            value_col="forecast_error",
-            group_col="region",
-            score_col="z_score",
-            threshold=3,
-            show_density=True
-        )
-        fig.show()
+        Plotly-Figure mit einem Subplot pro Gruppe (oder einem Gesamtplot).
     """
-    
+    # Einheitliche Farbsemantik für normale Punkte und Ausreißer.
     colors = {"normal": "blue", "not_outlier": "green", "outlier": "red"}
     
     # 1. Handling für optionale Gruppierung
@@ -75,6 +46,7 @@ def plot_univariate_data(
         plot_df = df
         current_group_col = group_col
 
+    # Gruppen bestimmen; jede Gruppe wird in einem eigenen Subplot gezeigt.
     groups = sorted(plot_df[current_group_col].unique().to_list())
     n_groups = len(groups)
 
@@ -84,6 +56,7 @@ def plot_univariate_data(
     dynamic_spacing = max(0.01, min(0.1, 1 / (n_rows * 2))) if n_rows > 1 else 0.01
     dynamic_violin_width = 1.5 if n_groups > 10 else 0.8
 
+    # Subplot-Titel optional um Ausreißerzählung erweitern.
     subplot_titles = []
     for group_val in groups:
         df_sub = plot_df.filter(pl.col(current_group_col) == group_val)
@@ -94,7 +67,7 @@ def plot_univariate_data(
         else:
             subplot_titles.append(f"{group_val}")
 
-    # sample_fraction für effizienz
+    # Optionales Sampling: alle Ausreißer behalten, normale Punkte ausdünnen.
     if sample_fraction is not None and 0 < sample_fraction < 1 and outlier_col in plot_df.columns:
         df_outliers = plot_df.filter(pl.col(outlier_col))         # Alle Anomalien behalten
         df_normals = plot_df.filter(~pl.col(outlier_col))         # Nur normale Punkte
@@ -109,6 +82,7 @@ def plot_univariate_data(
         shared_xaxes=False
     )
 
+    # Dummy-Traces sorgen für eine saubere Legende über alle Subplots hinweg.
     if outlier_col:
         fig.add_trace(go.Scattergl(
             x=[None], y=[None], mode="markers", name="Normal",
@@ -120,6 +94,7 @@ def plot_univariate_data(
         ))
 
     def add_trace(data, label, color, size, opacity, row, col, showlegend=True):
+        """Fügt einem Ziel-Subplot eine Scatter-Trace für eine Teilmenge hinzu."""
         fig.add_trace(go.Scattergl(
             x=data[value_col],
             y=np.zeros(data.height),
@@ -135,7 +110,7 @@ def plot_univariate_data(
         col = i % columns + 1
         df_sub = plot_df.filter(pl.col(current_group_col) == group_val)
 
-        # --- VIOLINE ---
+        # Dichte-Komponente (Violine) für den Verteilungsüberblick.
         if show_density:
             fig.add_trace(go.Violin(
                 x=df_sub[value_col],
@@ -149,8 +124,7 @@ def plot_univariate_data(
                 width=dynamic_violin_width,
             ), row=row, col=col)
         
-        # --- PUNKTE ---
-        # Wenn Score-Spalte vorhanden -> Unterscheidung Normal/Outlier
+        # Punktdarstellung: entweder getrennt nach Outlier-Status oder einfarbig.
         if outlier_col and outlier_col in df_sub.columns:
             df_not_outlier = df_sub.filter(~pl.col(outlier_col))
             df_outlier = df_sub.filter(pl.col(outlier_col))
@@ -173,7 +147,7 @@ def plot_univariate_data(
                 showlegend=False, hoverinfo='x'
             ), row=row, col=col)
 
-    # Layout-Finish
+    # Layout abschließen: y-Achse dient nur als Jitter-/Platzhalterachse.
     fig.update_yaxes(showgrid=False, zeroline=True, zerolinecolor='black', 
                      showticklabels=False, range=[-0.2, 1.2], fixedrange=True)
 
