@@ -1,26 +1,9 @@
 # Anomaly Detection in Energy Distribution Networks
 
-## Kurzfassung
+Python-Projekt zur Anomalieerkennung in Zeitreihendaten von Energieverteilungsnetzen.
+Der Code enthält Datenaufbereitung, mehrere Outlier-Verfahren und Plot-Funktionen.
 
-Im Rahmen dieser Arbeit wird die Erkennung von Anomalien in Zeitreihen elektrischer Energieverteilungsnetze untersucht. Grundlage sind stündliche Balancing-Authority-Daten (Demand, Forecast, Net Generation, Interchange). Ziel ist der methodische Vergleich eines robusten statistischen Verfahrens (`Modified Z-Score`), eines klassischen Machine-Learning-Verfahrens (`Isolation Forest`) und eines rekonstruktionsbasierten Deep-Learning-Ansatzes (`Autoencoder`).
-
-## Problemstellung und Zielsetzung
-
-Energieverteilungsnetze weisen durch Lastschwankungen, Prognosefehler, Messartefakte und operative Ereignisse komplexe, nichtstationäre Muster auf. Klassische Schwellwertregeln sind in diesem Kontext oft unzureichend.
-
-Die Arbeit verfolgt folgende Zielsetzung:
-
-- Entwicklung einer reproduzierbaren Pipeline zur Datenaufbereitung und Anomalieerkennung
-- Vergleich mehrerer Verfahren hinsichtlich Robustheit und praktischer Eignung
-- Analyse der Erkennbarkeit atypischer Last- und Erzeugungsverläufe
-
-## Forschungsfragen
-
-1. In welchem Umfang unterscheiden sich die Ergebnisse statistischer, baumbasierter und neuronaler Verfahren auf denselben Zeitreihen?
-2. Welche Vorverarbeitungsschritte sind für stabile und nachvollziehbare Ergebnisse erforderlich?
-3. Welche methodischen Grenzen ergeben sich ohne vollständig gelabelte Anomaliedaten?
-
-## Datengrundlage
+## Daten
 
 Verwendet werden Parquet-Dateien im Verzeichnis `data/`:
 
@@ -28,28 +11,7 @@ Verwendet werden Parquet-Dateien im Verzeichnis `data/`:
 - `interchange.parquet`
 - `subregion.parquet`
 
-Die standardmäßigen Dateipfade sind in `src/config.py` definiert. Das Laden, Umbenennen und Typisieren der Rohdaten erfolgt in `src/data_loader.py`.
-
-## Methodik
-
-### 1. Datenaufbereitung
-
-- Harmonisierung von Spaltennamen und Datumsformaten
-- Filterung unvollständiger bzw. nicht geeigneter Zeiträume
-- Feature-Bildung (u. a. `forecast_error`, `percentage_forecast_error`)
-- Konsistenzprüfungen und Duplikatkontrolle
-
-### 2. Anomalieerkennung
-
-- `Modified Z-Score`: robuste baselinebasierte Einzelsignal-Detektion
-- `Isolation Forest`: multivariate, nichtlineare Outlier-Erkennung
-- `Autoencoder` (Conv1D): Rekonstruktionsfehler-basiertes Verfahren auf Sequenzen
-
-### 3. Auswertung
-
-- Kennzeichnung verdächtiger Zeitpunkte über `is_outlier`
-- Visuelle Plausibilisierung mit Plotly-Zeitreihen und Verteilungen
-- Vergleich der Verfahren hinsichtlich Sensitivität und Stabilität
+Die Standardpfade sind in `src/config.py` definiert.
 
 ## Repository-Struktur
 
@@ -72,7 +34,20 @@ Die standardmäßigen Dateipfade sind in `src/config.py` definiert. Das Laden, U
 └── requirements.txt
 ```
 
-## Reproduzierbarkeit
+## Kernmodule
+
+- `src/data_loader.py`:
+  Lädt und normalisiert die Parquet-Daten, erzeugt Features und prüft auf Duplikate.
+- `src/calculate_outliers/calculate_outliers_with_modified_zscore.py`:
+  Robuste univariate Outlier-Erkennung mit Modified Z-Score.
+- `src/calculate_outliers/calculate_outliers_with_isolation_forest.py`:
+  Multivariate Outlier-Erkennung mit `sklearn` Isolation Forest.
+- `src/calculate_outliers/calculate_outliers_with_autoencoder.py`:
+  Sequenzbasierte Outlier-Erkennung mit Conv1D-Autoencoder (Keras).
+- `src/plotting/`:
+  Plotly-Funktionen für Zeitreihen-, univariate und multivariate Visualisierung.
+
+## Setup
 
 ### Voraussetzungen
 
@@ -89,19 +64,29 @@ source .venv/bin/activate          # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-### Empfohlene Ausführungsreihenfolge
+## Nutzung
 
-1. `datenanalyse_balance.ipynb`
-2. `datenanalyse_interchange.ipynb`
-3. `datenanalyse_subregion.ipynb`
-4. `isolation_forest.ipynb`
-5. `autoencoder.ipynb`
+Der typische Ablauf im Code ist:
 
-## Methodische Einschränkungen
+1. Daten laden (`get_balance_data`, `get_interchange_data`, `get_subregion_data`)
+2. Outlier berechnen (Modified Z-Score, Isolation Forest oder Autoencoder)
+3. Ergebnisse mit `is_outlier` weiterverarbeiten oder plotten
 
-- Fehlende Ground-Truth-Labels erschweren eine eindeutige quantitative Bewertung.
-- Schwellenwerte (z. B. beim Rekonstruktionsfehler) beeinflussen die Detektionsrate stark.
-- Zeitfensterwahl und Feature-Selektion wirken sich direkt auf die Ergebnisstabilität aus.
+Beispiel (Isolation Forest):
+
+```python
+from src.data_loader import get_balance_data
+from src.calculate_outliers.calculate_outliers_with_isolation_forest import (
+    calculate_outliers_with_isolation_forest,
+)
+
+df, _ = get_balance_data()
+result = calculate_outliers_with_isolation_forest(
+    df=df,
+    value_cols=["forecast_error", "percentage_forecast_error"],
+    contamination=0.01,
+)
+```
 
 ## Lizenz
 
