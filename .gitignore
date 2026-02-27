@@ -1,0 +1,9 @@
+__pycache__/
+.venv/
+.ipynb_checkpoints/
+data/
+models/
+.env
+.DS_Store
+template.ipynb
+requirements.in
