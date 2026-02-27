@@ -57,7 +57,7 @@ Die Standardpfade sind in `src/config.py` definiert.
 ### Installation
 
 ```bash
-git clone <REPO-URL>
+git clone https://github.com/MiTi041/Anomaly-Detection-in-Energy-Distribution-Networks.git
 cd "Anomaly Detection in Energy Distribution Networks"
 python -m venv .venv
 source .venv/bin/activate          # Windows: .venv\Scripts\activate
