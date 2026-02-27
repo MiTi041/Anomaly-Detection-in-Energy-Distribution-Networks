@@ -25,7 +25,6 @@ Dieses Repository enthält die Implementierung eines robusten Systems zur Anomal
    ```bash
    git clone [https://github.com/DEIN_USERNAME/DEIN_REPO_NAME.git](https://github.com/DEIN_USERNAME/DEIN_REPO_NAME.git)
    cd DEIN_REPO_NAME
-
    ```
 
 2. Virtuelle Umgebung erstellen und Abhängigkeiten installieren:
@@ -66,17 +65,6 @@ df_results = calculate_outliers_with_autoencoder(
 anomalies = df_results.filter(pl.col("is_outlier") == True)
 print(f"Anzahl erkannter Anomalien: {len(anomalies)}")
 ```
-
-## 📂 Repository Struktur
-
-├── data/ # (Ignoriert) Rohdaten
-├── src/ # Quellcode
-│ ├── plotting.py # Visualisierungs-Logik
-│ └── anomaly_detection.py # Autoencoder & Logging Logik
-├── notebooks/ # Explorative Analyse (EDA)
-├── requirements.in # Top-Level Abhängigkeiten
-├── requirements.txt # Generierte Abhängigkeiten (lock-file)
-└── README.md # Projektdokumentation
 
 ## 📝 Lizenz
 
